@@ -1,4 +1,4 @@
-lightgbm==4.3.0
+lightgbm
 pandas
 numpy
 scikit-learn
