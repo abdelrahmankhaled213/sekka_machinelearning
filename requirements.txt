@@ -1,5 +1,10 @@
+lightgbm
+pandas
+numpy
+scikit-learn
 fastapi
 uvicorn
-pandas
-scikit-learn
+pydantic
+matplotlib
 joblib
+python-multipart
