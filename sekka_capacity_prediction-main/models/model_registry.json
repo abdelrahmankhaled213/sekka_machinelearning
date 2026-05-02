@@ -1,0 +1,24 @@
+{
+  "1": {
+    "path": "models\\metro_capacity_model_v1.txt",
+    "timestamp": "2026-03-09T17:47:53.017582",
+    "mode": "initial",
+    "metrics": {
+      "mae": 4.2744,
+      "rmse": 5.4113,
+      "r2": 0.8913
+    },
+    "promoted": true
+  },
+  "2": {
+    "path": "models\\metro_capacity_model_v2.txt",
+    "timestamp": "2026-03-09T19:31:45.368380",
+    "mode": "initial",
+    "metrics": {
+      "mae": 4.2744,
+      "rmse": 5.4113,
+      "r2": 0.8913
+    },
+    "promoted": true
+  }
+}
