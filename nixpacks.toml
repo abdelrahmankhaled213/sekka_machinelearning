@@ -1,8 +1,20 @@
 [phases.setup]
+# تثبيت مكتبة النظام الأساسية لتشغيل موديل الـ ML
 aptPkgs = ["libgomp1"]
 
 [phases.install]
-cmds = ["python -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/pip install lightgbm"]
+# إنشاء البيئة الافتراضية وتثبيت المكتبات مع التأكيد على lightgbm
+cmds = [
+    "python -m venv .venv",
+    ".venv/bin/pip install --upgrade pip",
+    ".venv/bin/pip install -r requirements.txt",
+    ".venv/bin/pip install lightgbm"
+]
 
 [variables]
+# استخدام إصدار مستقر يضمن توافق مكتبات الـ Data Science
 PYTHON_VERSION = "3.11"
+
+[start]
+# أمر التشغيل من داخل البيئة الافتراضية
+cmd = ".venv/bin/python main.py"
