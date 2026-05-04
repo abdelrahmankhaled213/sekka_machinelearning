@@ -1,14 +1,14 @@
 # src/capacity_predictor.py
-"""
-CapacityPredictor – loads the live LightGBM model and serves predictions.
-Uses real lag features from SensorBuffer.
 
-All paths are resolved relative to the project root via config.py.
-"""
+import sys
+from pathlib import Path
+
+if __name__ == "__main__" and __package__ is None:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    __package__ = "src"
 
 import json
 import logging
-import pickle
 from datetime import datetime
 from typing import Optional
 
@@ -25,7 +25,6 @@ from .config import (
     LIVE_MODEL_PATH,
     MAE_DRIFT_THRESHOLD,
     MAX_CAPACITY,
-    META_PATH,
     RETRAIN_EVERY_HOURS,
     RETRAIN_EVERY_N_ROWS,
     SEAT_CAPACITY,
@@ -71,24 +70,13 @@ def _build_feature_row(
 
 
 class CapacityPredictor:
-    """
-    Loads the live LightGBM model and serves real‑time capacity predictions.
-
-    Parameters
-    ----------
-    model_path : path to the live .txt model file (default: config.LIVE_MODEL_PATH)
-    meta_path   : path to the .pkl metadata file   (default: config.META_PATH)
-    buffer      : SensorBuffer instance (loads from disk if None)
-    """
 
     def __init__(
         self,
         model_path=LIVE_MODEL_PATH,
-        meta_path=META_PATH,
         buffer: Optional[SensorBuffer] = None,
     ) -> None:
         self.model_path = model_path
-        self.meta_path = meta_path
         self.model: Optional[lgb.Booster] = None
         self.feature_cols: Optional[list[str]] = None
         self.buffer = buffer if buffer is not None else SensorBuffer.load()
@@ -99,7 +87,7 @@ class CapacityPredictor:
         self._drift_window_size: int = 500
 
     def load(self) -> "CapacityPredictor":
-        """Load model weights and metadata. Returns self for chaining."""
+    
         if not self.model_path.exists():
             raise FileNotFoundError(
                 f"No live model found at {self.model_path}. "
@@ -107,30 +95,26 @@ class CapacityPredictor:
             )
         self.model = lgb.Booster(model_file=str(self.model_path))
 
-        with open(self.meta_path, "rb") as f:
-            meta = pickle.load(f)
-        self.feature_cols = meta["feature_cols"]
+        # Extract feature names from the model itself – no meta.pkl needed
+        self.feature_cols = self.model.feature_name()
 
         logger.info("✅ Model loaded from %s", self.model_path)
-        logger.info("✅ Metadata loaded from %s", self.meta_path)
         logger.info("   Features: %d", len(self.feature_cols))
         return self
 
     def reload(self) -> None:
         """Hot‑reload the live model from disk (called after a successful retrain)."""
         self.model = lgb.Booster(model_file=str(self.model_path))
-        with open(self.meta_path, "rb") as f:
-            meta = pickle.load(f)
-        self.feature_cols = meta["feature_cols"]
+        self.feature_cols = self.model.feature_name()
         logger.info("Model hot-reloaded from %s", self.model_path)
 
     def _ensure_loaded(self) -> None:
         if self.model is None or self.feature_cols is None:
             raise RuntimeError("Model not loaded. Call CapacityPredictor.load() first.")
 
-    # ------------------------------------------------------------------
+  
     # Ingest & drift monitoring
-    # ------------------------------------------------------------------
+  
     def ingest(self, payload: dict) -> dict:
         """Validate and store one sensor reading. Returns ingestion result dict."""
         result = self.buffer.ingest(payload)
@@ -172,9 +156,7 @@ class CapacityPredictor:
         mae = self.recent_mae
         return mae is not None and mae > MAE_DRIFT_THRESHOLD
 
-    # ------------------------------------------------------------------
     # Retrain triggers (imported here to avoid circular imports)
-    # ------------------------------------------------------------------
     def _check_retrain_triggers(self) -> None:
         from .model_trainer import full_retrain_from_buffer, incremental_retrain
 
@@ -201,9 +183,8 @@ class CapacityPredictor:
                 self.reload()
             self.buffer.save()
 
-    # ------------------------------------------------------------------
     # Predictions
-    # ------------------------------------------------------------------
+   
     def predict_batch(
         self,
         station_ids: list[int],
@@ -283,9 +264,9 @@ class CapacityPredictor:
         """Convenience wrapper for a single station."""
         return self.predict_batch([station_id], hour, minute, day_of_week)[0]
 
-    # ------------------------------------------------------------------
+   
     # Reporting & demo
-    # ------------------------------------------------------------------
+   
     def demo(self, station_ids: Optional[list[int]] = None) -> None:
         station_ids = station_ids or [119, 209, 313, 101, 215, 301, 335]
         results = self.predict_batch(station_ids)
@@ -349,7 +330,7 @@ class CapacityPredictor:
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2)
 
-        print(f"\n📁 Exported {len(results)} predictions → '{filename}'")
+        print(f"\n Exported {len(results)} predictions → '{filename}'")
         return results
 
 
@@ -365,4 +346,4 @@ if __name__ == "__main__":
     predictor.demo_time_variations(station_id=119)
     predictor.export_json()
 
-    print("\n✅ Done. Flutter app can read 'sekka_app_data.json'.")
+    print("\n Done. Flutter app can read 'sekka_app_data.json'.")
